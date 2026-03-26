@@ -9,68 +9,83 @@ use App\Models\User;
 
 class BillingService
 {
-    public function generateBill(int $retailerId, string $date): Bill
-    {
-        // Get retailer commission
+    public function generateBill(
+        int $retailerId,
+        string $fromDate,
+        string $toDate
+    ): Bill {
         $retailer = User::findOrFail($retailerId);
 
-        // Get stock entry for this retailer and date
-        $stockEntry = StockEntry::with('items.product')
+        // Get ALL stock entries in date range
+        $stockEntries = StockEntry::with('items.product')
             ->where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->first();
+            ->whereDate('date', '>=', $fromDate)
+            ->whereDate('date', '<=', $toDate)
+            ->get();
 
-        // Get return for this retailer and date
-        $returnStock = ReturnStock::with('items')
+        // Get ALL returns in date range
+        $returnEntries = ReturnStock::with('items')
             ->where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->first();
+            ->whereDate('date', '>=', $fromDate)
+            ->whereDate('date', '<=', $toDate)
+            ->get();
 
-        // Build return items map [product_id => quantity]
-        $returnMap = [];
-        if ($returnStock) {
-            foreach ($returnStock->items as $item) {
-                $returnMap[$item->product_id] = $item->quantity;
+        // Build given map [product_id => total_given_qty]
+        $givenMap = [];
+        $productMap = [];
+        foreach ($stockEntries as $entry) {
+            foreach ($entry->items as $item) {
+                $pid = $item->product_id;
+                $givenMap[$pid] =
+                    ($givenMap[$pid] ?? 0) + $item->quantity;
+                if (!isset($productMap[$pid])) {
+                    $productMap[$pid] = $item->product;
+                }
             }
         }
 
-        // Delete existing bill for same retailer and date
-        $existingBill = Bill::where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->first();
-
-        if ($existingBill) {
-            $existingBill->items()->delete();
-            $existingBill->delete();
+        // Build return map [product_id => total_returned_qty]
+        $returnMap = [];
+        foreach ($returnEntries as $entry) {
+            foreach ($entry->items as $item) {
+                $pid = $item->product_id;
+                $returnMap[$pid] =
+                    ($returnMap[$pid] ?? 0) + $item->quantity;
+            }
         }
+
+        // Delete existing bill for same retailer and date range
+        Bill::where('retailer_id', $retailerId)
+            ->where('from_date', $fromDate)
+            ->where('to_date', $toDate)
+            ->each(function ($bill) {
+                $bill->items()->delete();
+                $bill->delete();
+            });
 
         // Calculate bill items
         $totalSales = 0;
         $billItems  = [];
 
-        if ($stockEntry) {
-            foreach ($stockEntry->items as $stockItem) {
-                $productId   = $stockItem->product_id;
-                $givenQty    = $stockItem->quantity;
-                $returnedQty = $returnMap[$productId] ?? 0;
-                $soldQty     = $givenQty - $returnedQty;
-                $price       = $stockItem->product->price;
-                $amount      = $soldQty * $price;
+        foreach ($givenMap as $productId => $givenQty) {
+            $returnedQty = $returnMap[$productId] ?? 0;
+            $soldQty     = $givenQty - $returnedQty;
+            $price       = $productMap[$productId]->price ?? 0;
+            $amount      = $soldQty * $price;
 
-                $totalSales += $amount;
+            $totalSales += $amount;
 
-                $billItems[] = [
-                    'product_id'   => $productId,
-                    'given_qty'    => $givenQty,
-                    'returned_qty' => $returnedQty,
-                    'sold_qty'     => $soldQty,
-                    'price'        => $price,
-                    'amount'       => $amount,
-                ];
-            }
+            $billItems[] = [
+                'product_id'   => $productId,
+                'given_qty'    => $givenQty,
+                'returned_qty' => $returnedQty,
+                'sold_qty'     => $soldQty,
+                'price'        => $price,
+                'amount'       => $amount,
+            ];
         }
 
-        // Calculate commission and final amount
+        // Commission
         $commissionPercent = $retailer->commission;
         $commission        = $totalSales * $commissionPercent / 100;
         $finalAmount       = $totalSales - $commission;
@@ -78,13 +93,14 @@ class BillingService
         // Create bill
         $bill = Bill::create([
             'retailer_id'  => $retailerId,
-            'date'         => $date,
+            'date'         => $toDate,
+            'from_date'    => $fromDate,
+            'to_date'      => $toDate,
             'total_sales'  => $totalSales,
             'commission'   => $commission,
             'final_amount' => $finalAmount,
         ]);
 
-        // Create bill items
         foreach ($billItems as $item) {
             $bill->items()->create($item);
         }

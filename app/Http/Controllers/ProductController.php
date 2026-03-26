@@ -9,14 +9,14 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    /**
-     * GET /products
-     */
     public function index(Request $request): JsonResponse
     {
         $products = Product::query()
             ->when($request->category, fn($q) => $q->where('category', $request->category))
-            ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%"))
+            ->when($request->search, fn($q) => $q->where(function($query) use ($request) {
+                $query->where('name', 'like', "%{$request->search}%")
+                      ->orWhere('tamil_name', 'like', "%{$request->search}%");
+            }))
             ->orderBy('category')
             ->orderBy('name')
             ->get();
@@ -24,9 +24,6 @@ class ProductController extends Controller
         return response()->json(['products' => $products]);
     }
 
-    /**
-     * POST /products
-     */
     public function store(ProductRequest $request): JsonResponse
     {
         $product = Product::create($request->validated());
@@ -37,17 +34,11 @@ class ProductController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /products/{id}
-     */
     public function show(Product $product): JsonResponse
     {
         return response()->json(['product' => $product]);
     }
 
-    /**
-     * PUT /products/{id}
-     */
     public function update(ProductRequest $request, Product $product): JsonResponse
     {
         $product->update($request->validated());
@@ -58,9 +49,6 @@ class ProductController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /products/{id}
-     */
     public function destroy(Product $product): JsonResponse
     {
         $product->delete();
@@ -68,9 +56,6 @@ class ProductController extends Controller
         return response()->json(['message' => 'Product deleted successfully.']);
     }
 
-    /**
-     * GET /products/categories
-     */
     public function categories(): JsonResponse
     {
         $categories = Product::distinct()->pluck('category')->filter()->values();

@@ -12,6 +12,8 @@ class Bill extends Model
     protected $fillable = [
         'retailer_id',
         'date',
+        'from_date',
+        'to_date',
         'total_sales',
         'commission',
         'final_amount',
@@ -19,15 +21,18 @@ class Bill extends Model
 
     protected $casts = [
         'date'         => 'date',
+        'from_date'    => 'date',
+        'to_date'      => 'date',
         'total_sales'  => 'decimal:2',
         'commission'   => 'decimal:2',
         'final_amount' => 'decimal:2',
     ];
 
-    // Relationships
     public function retailer()
     {
-        return $this->belongsTo(User::class, 'retailer_id');
+        return $this->belongsTo(
+            User::class, 'retailer_id'
+        );
     }
 
     public function items()
