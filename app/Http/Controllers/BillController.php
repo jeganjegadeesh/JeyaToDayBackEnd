@@ -2,11 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\BillGenerateRequest;
 use App\Models\Bill;
-use App\Models\StockEntry;
-use App\Models\ReturnStock;
-use App\Models\Product;
 use App\Services\BillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +15,6 @@ class BillController extends Controller
 
     /**
      * POST /bill/generate
-     * Generate bill for a date range
      */
     public function generate(Request $request): JsonResponse
     {
@@ -45,6 +40,22 @@ class BillController extends Controller
     }
 
     /**
+     * GET /bill/last-date/{retailerId}
+     * Get suggested from_date for next bill
+     */
+    public function lastBillDate(
+        int $retailerId
+    ): JsonResponse {
+        $date = $this->billingService
+            ->getLastBillDate($retailerId);
+
+        return response()->json([
+            'from_date' => $date,
+            'to_date'   => now()->toDateString(),
+        ]);
+    }
+
+    /**
      * GET /bill/history
      */
     public function history(Request $request): JsonResponse
@@ -53,29 +64,12 @@ class BillController extends Controller
             'items.product',
             'retailer:id,name,mobile,commission'
         )
-            ->when(
-                $request->retailer_id,
-                fn($q) => $q->where(
-                    'retailer_id',
-                    $request->retailer_id
-                )
-            )
-            ->when(
-                $request->date,
-                fn($q) => $q->whereDate('date', $request->date)
-            )
-            ->when(
-                $request->from_date,
-                fn($q) => $q->whereDate(
-                    'date', '>=', $request->from_date
-                )
-            )
-            ->when(
-                $request->to_date,
-                fn($q) => $q->whereDate(
-                    'date', '<=', $request->to_date
-                )
-            )
+            ->when($request->retailer_id,
+                fn($q) => $q->where('retailer_id', $request->retailer_id))
+            ->when($request->from_date,
+                fn($q) => $q->whereDate('date', '>=', $request->from_date))
+            ->when($request->to_date,
+                fn($q) => $q->whereDate('date', '<=', $request->to_date))
             ->orderByDesc('id')
             ->get();
 
@@ -100,32 +94,23 @@ class BillController extends Controller
      */
     public function summary(Request $request): JsonResponse
     {
-        $query = Bill::with('retailer:id,name')
-            ->when(
-                $request->from_date,
-                fn($q) => $q->whereDate(
-                    'date', '>=', $request->from_date
-                )
-            )
-            ->when(
-                $request->to_date,
-                fn($q) => $q->whereDate(
-                    'date', '<=', $request->to_date
-                )
-            );
-
-        $bills = $query->get();
-
-        $summary = [
-            'total_sales'      => $bills->sum('total_sales'),
-            'total_commission' => $bills->sum('commission'),
-            'total_final'      => $bills->sum('final_amount'),
-            'total_bills'      => $bills->count(),
-        ];
+        $bills = Bill::with('retailer:id,name')
+            ->when($request->from_date,
+                fn($q) => $q->whereDate('date', '>=', $request->from_date))
+            ->when($request->to_date,
+                fn($q) => $q->whereDate('date', '<=', $request->to_date))
+            ->get();
 
         return response()->json([
-            'summary' => $summary,
-            'bills'   => $bills,
+            'summary' => [
+                'total_sales'      => $bills->sum('total_sales'),
+                'total_commission' => $bills->sum('commission'),
+                'total_final'      => $bills->sum('final_amount'),
+                'total_paid'       => $bills->sum('paid_amount'),
+                'total_balance'    => $bills->sum('balance_amount'),
+                'total_bills'      => $bills->count(),
+            ],
+            'bills' => $bills,
         ]);
     }
 

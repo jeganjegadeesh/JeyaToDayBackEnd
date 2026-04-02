@@ -17,22 +17,24 @@ class Bill extends Model
         'total_sales',
         'commission',
         'final_amount',
+        'paid_amount',
+        'balance_amount',
     ];
 
     protected $casts = [
-        'date'         => 'date',
-        'from_date'    => 'date',
-        'to_date'      => 'date',
-        'total_sales'  => 'decimal:2',
-        'commission'   => 'decimal:2',
-        'final_amount' => 'decimal:2',
+        'date'           => 'date',
+        'from_date'      => 'date',
+        'to_date'        => 'date',
+        'total_sales'    => 'decimal:2',
+        'commission'     => 'decimal:2',
+        'final_amount'   => 'decimal:2',
+        'paid_amount'    => 'decimal:2',
+        'balance_amount' => 'decimal:2',
     ];
 
     public function retailer()
     {
-        return $this->belongsTo(
-            User::class, 'retailer_id'
-        );
+        return $this->belongsTo(User::class, 'retailer_id');
     }
 
     public function items()
