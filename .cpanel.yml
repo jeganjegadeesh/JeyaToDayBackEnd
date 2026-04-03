@@ -2,3 +2,5 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/klupjyapja/public_html
     - /bin/cp -R public/* $DEPLOYPATH
+    - /usr/local/bin/php artisan config:cache
+    - /usr/local/bin/php artisan route:cache
