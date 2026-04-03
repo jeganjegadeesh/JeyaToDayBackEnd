@@ -33,9 +33,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/products/{product}',  [ProductController::class, 'show']);
 
     // Reports - read for all
-    Route::get('/reports/today',         [ReportController::class, 'today']);
-    Route::get('/reports/summary',       [ReportController::class, 'summary']);
-    Route::get('/reports/retailer/{id}', [ReportController::class, 'retailerReport']);
+    Route::get('/reports/today',             [ReportController::class, 'today']);
+    Route::get('/reports/summary',           [ReportController::class, 'summary']);
+    Route::get('/reports/retailer/{id}',     [ReportController::class, 'retailerReport']);
+    Route::get('/reports/chart/admin',       [ReportController::class, 'adminChart']);
+    Route::get('/reports/chart/retailer',    [ReportController::class, 'retailerChart']);
 
     // Bill last date - for all
     Route::get('/bill/last-date/{retailerId}',

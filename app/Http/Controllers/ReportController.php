@@ -8,6 +8,7 @@ use App\Models\ReturnStock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
@@ -19,12 +20,12 @@ class ReportController extends Controller
     {
         $today = today()->toDateString();
 
-        $totalSales     = Bill::whereDate('date', $today)->sum('total_sales');
+        $totalSales      = Bill::whereDate('date', $today)->sum('total_sales');
         $totalCommission = Bill::whereDate('date', $today)->sum('commission');
-        $totalFinal     = Bill::whereDate('date', $today)->sum('final_amount');
-        $totalBills     = Bill::whereDate('date', $today)->count();
-        $totalStock     = StockEntry::whereDate('date', $today)->count();
-        $totalReturns   = ReturnStock::whereDate('date', $today)->count();
+        $totalFinal      = Bill::whereDate('date', $today)->sum('final_amount');
+        $totalBills      = Bill::whereDate('date', $today)->count();
+        $totalStock      = StockEntry::whereDate('date', $today)->count();
+        $totalReturns    = ReturnStock::whereDate('date', $today)->count();
 
         $bills = Bill::with('retailer:id,name')
             ->whereDate('date', $today)
@@ -141,5 +142,117 @@ class ReportController extends Controller
             'stock_entries' => $stockEntries,
             'returns'       => $returns,
         ]);
+    }
+
+    /**
+     * GET /reports/chart/admin?mode=days|months
+     *
+     * mode=days   → last 7 days, each day total_sales
+     * mode=months → last 4 months, each month total_sales
+     *
+     * Response:
+     * {
+     *   "chart": [
+     *     { "label": "26/03", "value": 1500.00 },
+     *     ...
+     *   ]
+     * }
+     */
+    public function adminChart(Request $request): JsonResponse
+    {
+        $mode = $request->get('mode', 'days'); // days | months
+
+        if ($mode === 'months') {
+            $data = [];
+            for ($i = 3; $i >= 0; $i--) {
+                $month     = Carbon::now()->subMonths($i)->startOfMonth();
+                $fromDate  = $month->toDateString();
+                $toDate    = $month->copy()->endOfMonth()->toDateString();
+                $label     = $month->format('M');
+
+                $totalSales = Bill::whereDate('date', '>=', $fromDate)
+                    ->whereDate('date', '<=', $toDate)
+                    ->sum('total_sales');
+
+                $data[] = [
+                    'label' => $label,
+                    'value' => (float) $totalSales,
+                ];
+            }
+        } else {
+            // Last 7 days
+            $data = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $day   = Carbon::now()->subDays($i)->toDateString();
+                $label = Carbon::now()->subDays($i)->format('d/m');
+
+                $totalSales = Bill::whereDate('date', $day)->sum('total_sales');
+
+                $data[] = [
+                    'label' => $label,
+                    'value' => (float) $totalSales,
+                ];
+            }
+        }
+
+        return response()->json(['chart' => $data]);
+    }
+
+    /**
+     * GET /reports/chart/retailer?mode=days|months
+     *
+     * Uses the authenticated retailer's id automatically.
+     * Returns earnings (final_amount) per day/month.
+     *
+     * Response:
+     * {
+     *   "chart": [
+     *     { "label": "26/03", "value": 800.00 },
+     *     ...
+     *   ]
+     * }
+     */
+    public function retailerChart(Request $request): JsonResponse
+    {
+        $retailerId = $request->user()->id;
+        $mode       = $request->get('mode', 'days');
+
+        if ($mode === 'months') {
+            $data = [];
+            for ($i = 3; $i >= 0; $i--) {
+                $month    = Carbon::now()->subMonths($i)->startOfMonth();
+                $fromDate = $month->toDateString();
+                $toDate   = $month->copy()->endOfMonth()->toDateString();
+                $label    = $month->format('M');
+
+                $totalEarnings = Bill::where('retailer_id', $retailerId)
+                    ->whereDate('date', '>=', $fromDate)
+                    ->whereDate('date', '<=', $toDate)
+                    ->sum('final_amount');
+
+                $data[] = [
+                    'label' => $label,
+                    'value' => (float) $totalEarnings,
+                ];
+            }
+        } else {
+            // Last 7 days
+            $data = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $day   = Carbon::now()->subDays($i)->toDateString();
+                $label = Carbon::now()->subDays($i)->format('d/m');
+
+                $totalEarnings = Bill::where('retailer_id', $retailerId)
+                    ->whereDate('date', $day)
+                    ->sum('final_amount');
+
+                $data[] = [
+                    'label' => $label,
+                    'value' => (float) $totalEarnings,
+                ];
+            }
+        }
+
+        return response()->json(['chart' => $data]);
     }
 }
