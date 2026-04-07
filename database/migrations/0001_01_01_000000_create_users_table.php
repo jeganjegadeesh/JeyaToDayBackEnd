@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('mobile', 15)->unique();
             $table->string('password');
-            $table->enum('role', ['admin', 'retailer'])->default('retailer');
+            $table->enum('role', ['admin', 'retailer', 'user'])->default('retailer');
             $table->decimal('commission', 5, 2)->default(0.00);
             $table->rememberToken();
             $table->timestamps();
