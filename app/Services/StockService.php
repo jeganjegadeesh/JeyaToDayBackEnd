@@ -21,27 +21,27 @@ class StockService
         array $items
     ): StockEntry {
         // Block only if an already-billed entry exists for this retailer+date.
-        $billedExists = StockEntry::where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->where('is_billed', true)
-            ->exists();
+        // $billedExists = StockEntry::where('retailer_id', $retailerId)
+        //     ->whereDate('date', $date)
+        //     ->where('is_billed', true)
+        //     ->exists();
 
-        if ($billedExists) {
-            throw new \Exception(
-                'Cannot edit stock. This stock entry has already been included in a bill.'
-            );
-        }
+        // if ($billedExists) {
+        //     throw new \Exception(
+        //         'Cannot edit stock. This stock entry has already been included in a bill.'
+        //     );
+        // }
 
         // Replace any existing UNBILLED entry for this date.
-        $existing = StockEntry::where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->where('is_billed', false)
-            ->first();
+        // $existing = StockEntry::where('retailer_id', $retailerId)
+        //     ->whereDate('date', $date)
+        //     ->where('is_billed', false)
+        //     ->first();
 
-        if ($existing) {
-            $existing->items()->delete();
-            $existing->delete();
-        }
+        // if ($existing) {
+        //     $existing->items()->delete();
+        //     $existing->delete();
+        // }
 
         $entry = StockEntry::create([
             'retailer_id' => $retailerId,
@@ -70,27 +70,27 @@ class StockService
         string $date,
         array $items
     ): ReturnStock {
-        $billedExists = ReturnStock::where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->where('is_billed', true)
-            ->exists();
+        // $billedExists = ReturnStock::where('retailer_id', $retailerId)
+        //     ->whereDate('date', $date)
+        //     ->where('is_billed', true)
+        //     ->exists();
 
-        if ($billedExists) {
-            throw new \Exception(
-                'Cannot edit returns. This return entry has already been included in a bill.'
-            );
-        }
+        // if ($billedExists) {
+        //     throw new \Exception(
+        //         'Cannot edit returns. This return entry has already been included in a bill.'
+        //     );
+        // }
 
-        // Replace any existing UNBILLED return for this date.
-        $existing = ReturnStock::where('retailer_id', $retailerId)
-            ->whereDate('date', $date)
-            ->where('is_billed', false)
-            ->first();
+        // // Replace any existing UNBILLED return for this date.
+        // $existing = ReturnStock::where('retailer_id', $retailerId)
+        //     ->whereDate('date', $date)
+        //     ->where('is_billed', false)
+        //     ->first();
 
-        if ($existing) {
-            $existing->items()->delete();
-            $existing->delete();
-        }
+        // if ($existing) {
+        //     $existing->items()->delete();
+        //     $existing->delete();
+        // }
 
         $return = ReturnStock::create([
             'retailer_id' => $retailerId,
