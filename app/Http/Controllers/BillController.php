@@ -15,19 +15,17 @@ class BillController extends Controller
 
     /**
      * POST /bill/generate
+     *
+     * No from_date / to_date needed — bill covers all unbilled records.
      */
     public function generate(Request $request): JsonResponse
     {
         $request->validate([
             'retailer_id' => 'required|exists:users,id',
-            'from_date'   => 'required|date',
-            'to_date'     => 'required|date|after_or_equal:from_date',
         ]);
 
         $bill = $this->billingService->generateBill(
             $request->retailer_id,
-            $request->from_date,
-            $request->to_date,
         );
 
         return response()->json([
@@ -40,19 +38,15 @@ class BillController extends Controller
     }
 
     /**
-     * GET /bill/last-date/{retailerId}
-     * Get suggested from_date for next bill
+     * GET /bill/pending/{retailerId}
+     *
+     * Preview of what will be included in the next bill.
      */
-    public function lastBillDate(
-        int $retailerId
-    ): JsonResponse {
-        $date = $this->billingService
-            ->getLastBillDate($retailerId);
+    public function pending(int $retailerId): JsonResponse
+    {
+        $summary = $this->billingService->getPendingSummary($retailerId);
 
-        return response()->json([
-            'from_date' => $date,
-            'to_date'   => now()->toDateString(),
-        ]);
+        return response()->json(['pending' => $summary]);
     }
 
     /**
@@ -116,14 +110,16 @@ class BillController extends Controller
 
     /**
      * DELETE /bill/{id}
+     *
+     * Deletes the bill AND resets all linked records back to unbilled,
+     * so they can be corrected and re-billed.
      */
     public function destroy(Bill $bill): JsonResponse
     {
-        $bill->items()->delete();
-        $bill->delete();
+        $this->billingService->deleteBill($bill);
 
         return response()->json([
-            'message' => 'Bill deleted successfully.'
+            'message' => 'Bill deleted. All linked records are now unbilled and can be corrected.'
         ]);
     }
 }

@@ -39,9 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/chart/admin',       [ReportController::class, 'adminChart']);
     Route::get('/reports/chart/retailer',    [ReportController::class, 'retailerChart']);
 
-    // Bill last date - for all
-    Route::get('/bill/last-date/{retailerId}',
-        [BillController::class, 'lastBillDate']);
+    // Pending bill preview - for all
+    Route::get('/bill/pending/{retailerId}',
+        [BillController::class, 'pending']);
 
     // Admin Only
     Route::middleware('role:admin')->group(function () {

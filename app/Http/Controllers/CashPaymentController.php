@@ -20,6 +20,8 @@ class CashPaymentController extends Controller
                 fn($q) => $q->whereDate('date', '>=', $request->from_date))
             ->when($request->to_date,
                 fn($q) => $q->whereDate('date', '<=', $request->to_date))
+            ->when(isset($request->is_billed),
+                fn($q) => $q->where('is_billed', filter_var($request->is_billed, FILTER_VALIDATE_BOOLEAN)))
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->get();
@@ -44,6 +46,7 @@ class CashPaymentController extends Controller
             'date'        => $request->date,
             'amount'      => $request->amount,
             'note'        => $request->note,
+            'is_billed'   => false,
         ]);
 
         return response()->json([
@@ -54,9 +57,17 @@ class CashPaymentController extends Controller
 
     /**
      * DELETE /cash-payments/{id}
+     *
+     * Blocked if the payment has already been included in a bill.
      */
     public function destroy(CashPayment $cashPayment): JsonResponse
     {
+        if ($cashPayment->is_billed) {
+            return response()->json([
+                'message' => 'Cannot delete. This cash payment has already been included in a bill. Delete the bill first to make corrections.',
+            ], 422);
+        }
+
         $cashPayment->delete();
 
         return response()->json([
@@ -66,24 +77,21 @@ class CashPaymentController extends Controller
 
     /**
      * GET /cash-payments/total
-     * Get total unpaid amount for a retailer between dates
+     *
+     * Total unbilled cash received for a retailer (used for next bill preview).
      */
     public function total(Request $request): JsonResponse
     {
         $request->validate([
             'retailer_id' => 'required|exists:users,id',
-            'from_date'   => 'required|date',
-            'to_date'     => 'required|date',
         ]);
 
-        $total = CashPayment::where('retailer_id', $request->retailer_id)
-            ->whereDate('date', '>=', $request->from_date)
-            ->whereDate('date', '<=', $request->to_date)
-            ->sum('amount');
+        $query = CashPayment::where('retailer_id', $request->retailer_id)
+            ->where('is_billed', false);
 
+        $total    = $query->sum('amount');
         $payments = CashPayment::where('retailer_id', $request->retailer_id)
-            ->whereDate('date', '>=', $request->from_date)
-            ->whereDate('date', '<=', $request->to_date)
+            ->where('is_billed', false)
             ->orderBy('date')
             ->get();
 

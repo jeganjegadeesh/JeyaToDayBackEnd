@@ -12,6 +12,8 @@ class StockEntry extends Model
     protected $fillable = [
         'retailer_id',
         'date',
+        'is_billed',
+        'bill_id'
     ];
 
     protected $casts = [

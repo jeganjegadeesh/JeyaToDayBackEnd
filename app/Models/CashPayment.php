@@ -14,6 +14,8 @@ class CashPayment extends Model
         'date',
         'amount',
         'note',
+        'is_billed',
+        'bill_id'
     ];
 
     protected $casts = [
