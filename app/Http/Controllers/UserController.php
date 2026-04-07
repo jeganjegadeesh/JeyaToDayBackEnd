@@ -39,7 +39,7 @@ class UserController extends Controller
             'name'       => 'required|string|max:255',
             'mobile'     => 'required|string|max:15|unique:users,mobile',
             'password'   => 'required|string|min:6',
-            'role'       => 'required|in:admin,retailer',
+            'role'       => 'required|in:admin,retailer,user',
             'commission' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -83,7 +83,7 @@ class UserController extends Controller
         $request->validate([
             'name'       => 'required|string|max:255',
             'mobile'     => 'required|string|max:15|unique:users,mobile,' . $user->id,
-            'role'       => 'required|in:admin,retailer',
+            'role'       => 'required|in:admin,retailer,user',
             'commission' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -114,12 +114,6 @@ class UserController extends Controller
      */
     public function destroy(User $user): JsonResponse
     {
-        // // Prevent deleting yourself
-        // if ($user->id === auth()->) {
-        //     return response()->json([
-        //         'message' => 'You cannot delete your own account.'
-        //     ], 403);
-        // }
 
         $user->delete();
 
