@@ -8,3 +8,6 @@ ADD `is_billed` BOOLEAN NOT NULL DEFAULT FALSE AFTER `bill_id`;
 
 ALTER TABLE `cash_payments` ADD `bill_id` MEDIUMTEXT NULL DEFAULT NULL AFTER `retailer_id`, 
 ADD `is_billed` BOOLEAN NOT NULL DEFAULT FALSE AFTER `bill_id`;
+
+
+ALTER TABLE `bills` DROP INDEX `bills_retailer_id_date_unique`;

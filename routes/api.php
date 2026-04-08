@@ -44,7 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
         [BillController::class, 'pending']);
 
     // Admin Only
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('role:admin,user')->group(function () {
 
         // Products
         Route::post('/products',             [ProductController::class, 'store']);
