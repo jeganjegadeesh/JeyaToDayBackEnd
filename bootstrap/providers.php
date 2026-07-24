@@ -1,7 +1,5 @@
 <?php
 
-use App\Providers\AppServiceProvider;
-
 return [
-    AppServiceProvider::class,
+    // Add App\Providers\* classes here if you create custom service providers.
 ];

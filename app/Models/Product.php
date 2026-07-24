@@ -2,38 +2,25 @@
 
 namespace App\Models;
 
+use App\Traits\HasAudit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasAudit, HasFactory;
 
     protected $fillable = [
-        'name',
-        'tamil_name',
-        'price',
-        'category',
+        'company_id', 'name', 'type', 'rate', 'created_by', 'updated_by', 'is_deleted',
     ];
 
-    protected $casts = [
-        'price' => 'decimal:2',
-    ];
-
-    // Relationships
-    public function stockEntryItems()
+    protected function casts(): array
     {
-        return $this->hasMany(StockEntryItem::class);
+        return ['rate' => 'decimal:2'];
     }
 
-    public function returnItems()
+    public function company()
     {
-        return $this->hasMany(ReturnItem::class);
-    }
-
-    public function billItems()
-    {
-        return $this->hasMany(BillItem::class);
+        return $this->belongsTo(Company::class);
     }
 }

@@ -2,34 +2,36 @@
 
 namespace App\Models;
 
+use App\Traits\HasAudit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ReturnStock extends Model
 {
-    use HasFactory;
-
-    protected $table = 'returns';
+    use HasAudit, HasFactory;
 
     protected $fillable = [
-        'retailer_id',
-        'date',
-        'is_billed',
-        'bill_id'
+        'company_id', 'retailer_id', 'date', 'is_billed', 'bill_id',
+        'created_by', 'updated_by', 'is_deleted',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return ['date' => 'date', 'is_billed' => 'boolean'];
+    }
 
-    // Relationships
     public function retailer()
     {
-        return $this->belongsTo(User::class, 'retailer_id');
+        return $this->belongsTo(Retailer::class);
     }
 
     public function items()
     {
-        return $this->hasMany(ReturnItem::class, 'return_id');
+        return $this->hasMany(ReturnStockItem::class);
+    }
+
+    public function bill()
+    {
+        return $this->belongsTo(Bill::class);
     }
 }

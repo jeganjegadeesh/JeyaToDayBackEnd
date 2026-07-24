@@ -1,64 +1,69 @@
 <?php
-
 namespace App\Models;
 
+use App\Traits\HasAudit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasAudit, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
-        'mobile',
-        'password',
-        'role',
-        'commission',
+        'company_id', 'name', 'phone_number', 'password', 'type', 'commission',
+        'theme', 'language', 'font_size', 'profile_image', 'created_by', 'updated_by', 'is_deleted',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = [
-        'commission' => 'decimal:2',
-    ];
+    // so profile_image_url auto-appears in JSON responses
+    protected $appends = ['profile_image_url'];
 
-    // Relationships
-    public function stockEntries()
+    protected function casts(): array
     {
-        return $this->hasMany(StockEntry::class, 'retailer_id');
+        return [
+            'password' => 'hashed',
+            'commission' => 'decimal:2',
+        ];
     }
 
-    public function returns()
+    public function company()
     {
-        return $this->hasMany(ReturnStock::class, 'retailer_id');
-    }
-
-    public function bills()
-    {
-        return $this->hasMany(Bill::class, 'retailer_id');
-    }
-
-    // Scopes
-    public function scopeRetailers($query)
-    {
-        return $query->where('role', 'retailer');
-    }
-
-    public function scopeAdmins($query)
-    {
-        return $query->where('role', 'admin');
+        return $this->belongsTo(Company::class);
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->type === 'admin';
+    }
+
+    public function isManager(): bool
+    {
+        return $this->type === 'manager';
     }
 
     public function isRetailer(): bool
     {
-        return $this->role === 'retailer';
+        return $this->type === 'retailer';
+    }
+
+    public function canManage(): bool
+    {
+        return in_array($this->type, ['admin', 'manager']);
+    }
+
+    public function getProfileImageUrlAttribute(): ?string
+    {
+        if (!$this->profile_image) {
+            return null;
+        }
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+
+        return $disk->url($this->profile_image);
     }
 }
