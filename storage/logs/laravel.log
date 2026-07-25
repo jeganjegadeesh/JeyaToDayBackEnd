@@ -1,0 +1,9 @@
+[2026-07-25 15:54:04] local.ERROR: Command "seader" is not defined. {"exception":"[object] (Symfony\\Component\\Console\\Exception\\CommandNotFoundException(code: 0): Command \"seader\" is not defined. at C:/jegadeesh/New folder/JeyaToDayBackEnd/vendor/symfony/console/Application.php:759)
+[stacktrace]
+#0 C:/jegadeesh/New folder/JeyaToDayBackEnd/vendor/symfony/console/Application.php(298): Symfony/Component/Console/Application->find('seader')
+#1 C:/jegadeesh/New folder/JeyaToDayBackEnd/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#2 C:/jegadeesh/New folder/JeyaToDayBackEnd/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#3 C:/jegadeesh/New folder/JeyaToDayBackEnd/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#4 C:/jegadeesh/New folder/JeyaToDayBackEnd/artisan(13): Illuminate/Foundation/Application->handleCommand(Object(Symfony/Component/Console/Input/ArgvInput))
+#5 {main}
+"} 

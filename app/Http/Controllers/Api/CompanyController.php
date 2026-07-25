@@ -41,6 +41,10 @@ class CompanyController extends Controller
         }
 
         $data['updated_by'] = $request->user()->id;
+        // Reaching a successful update means the admin has gone through
+        // (or re-visited) the setup form — clears the one-time onboarding
+        // gate on the app side permanently.
+        $data['is_setup_complete'] = true;
 
         $company->update($data);
 

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -63,7 +64,15 @@ class AuthController extends Controller
             'theme' => 'sometimes|in:light,dark',
             'language' => 'sometimes|in:ta,en',
             'font_size' => 'sometimes|in:S,M,L,XL',
+            'profile_image' => 'nullable|image|max:2048',
         ]);
+
+        if ($request->hasFile('profile_image')) {
+            if ($user->profile_image) {
+                Storage::disk('public')->delete($user->profile_image);
+            }
+            $data['profile_image'] = $request->file('profile_image')->store('userAssets', 'public');
+        }
 
         $user->update($data);
 

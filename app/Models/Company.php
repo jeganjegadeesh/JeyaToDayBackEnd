@@ -11,7 +11,7 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'logo', 'gst_number', 'full_address', 'contact_number',
-        'opening_balance', 'opening_balance_date', 'opening_balance_locked',
+        'opening_balance', 'opening_balance_date', 'opening_balance_locked', 'is_setup_complete',
         'created_by', 'updated_by', 'is_deleted',
     ];
 
@@ -21,6 +21,7 @@ class Company extends Model
             'opening_balance' => 'decimal:2',
             'opening_balance_date' => 'date',
             'opening_balance_locked' => 'boolean',
+            'is_setup_complete' => 'boolean',
         ];
     }
 
