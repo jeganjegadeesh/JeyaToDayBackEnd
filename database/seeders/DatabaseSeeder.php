@@ -22,11 +22,11 @@ class DatabaseSeeder extends Seeder
         User::create([
             'company_id' => $company->id,
             'name' => 'Super Admin',
-            'phone_number' => '9999999999',
+            'phone_number' => '1234567890',
             'password' => Hash::make('123456'),
             'type' => 'admin',
         ]);
 
-        $this->command->info('Seeded company "AJ Ice Creams" and admin login 9999999999 / 123456');
+        $this->command->info('Seeded company "AJ Ice Creams" and admin login 1234567890 / 123456');
     }
 }
