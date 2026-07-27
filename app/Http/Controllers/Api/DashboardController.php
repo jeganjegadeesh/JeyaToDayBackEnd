@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\CashPayment;
-use App\Models\Expense;
+use App\Models\GiveStock;
 use App\Models\Retailer;
-use App\Models\RetailerLoan;
+use App\Models\ReturnStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -27,77 +27,12 @@ class DashboardController extends Controller
                 ->selectRaw("DATE_FORMAT(date, '%Y-%m') as period, SUM(subtotal) as sales")
                 ->groupBy('period')->orderBy('period')->get();
 
-        $today = Carbon::today();
-        $yesterday = Carbon::yesterday();
-        $salesToday = (float) Bill::whereDate('date', $today)->sum('subtotal');
-        $salesYesterday = (float) Bill::whereDate('date', $yesterday)->sum('subtotal');
-        $changePercent = $salesYesterday > 0
-            ? round((($salesToday - $salesYesterday) / $salesYesterday) * 100, 1)
-            : ($salesToday > 0 ? 100.0 : 0.0);
-
-        $pendingLoans = (float) (RetailerLoan::selectRaw('SUM(amount - repaid_amount) as total')->value('total') ?? 0);
-
         return response()->json([
             'period' => $period,
             'sales_chart' => $chart,
             'total_retailers' => Retailer::count(),
             'total_bills_this_month' => Bill::whereMonth('date', now()->month)->whereYear('date', now()->year)->count(),
-            'total_sales_today' => $salesToday,
-            'sales_change_percent' => $changePercent,
-            'pending_loans' => $pendingLoans,
-            'recent_transactions' => $this->recentTransactions(),
         ]);
-    }
-
-    /**
-     * A single, chronologically-merged feed of the last 5 cash-related
-     * events across bills (sales), cash payments received, and expenses
-     * paid out — each tagged with a `kind` so the app can colour/sign the
-     * amount correctly (neutral sale, blue income, red expense).
-     */
-    private function recentTransactions()
-    {
-        $take = 5;
-
-        $sales = Bill::with('retailer:id,name')
-            ->orderByDesc('date')->orderByDesc('id')->take($take)
-            ->get(['id', 'retailer_id', 'date', 'final_total', 'created_at'])
-            ->map(fn (Bill $b) => [
-                'kind' => 'sale',
-                'title' => $b->retailer?->name ?? 'Retailer #'.$b->retailer_id,
-                'subtitle' => null,
-                'date' => optional($b->date)->format('Y-m-d'),
-                'timestamp' => optional($b->created_at)->toIso8601String(),
-                'amount' => (float) $b->final_total,
-            ]);
-
-        $cashPayments = CashPayment::with('retailer:id,name')
-            ->orderByDesc('date')->orderByDesc('id')->take($take)
-            ->get(['id', 'retailer_id', 'date', 'amount', 'created_at'])
-            ->map(fn (CashPayment $c) => [
-                'kind' => 'income',
-                'title' => 'Cash Payment',
-                'subtitle' => $c->retailer?->name,
-                'date' => optional($c->date)->format('Y-m-d'),
-                'timestamp' => optional($c->created_at)->toIso8601String(),
-                'amount' => (float) $c->amount,
-            ]);
-
-        $expenses = Expense::orderByDesc('date')->orderByDesc('id')->take($take)
-            ->get(['id', 'date', 'amount', 'remarks', 'created_at'])
-            ->map(fn (Expense $e) => [
-                'kind' => 'expense',
-                'title' => $e->remarks ?: 'Expense',
-                'subtitle' => null,
-                'date' => optional($e->date)->format('Y-m-d'),
-                'timestamp' => optional($e->created_at)->toIso8601String(),
-                'amount' => (float) $e->amount,
-            ]);
-
-        return $sales->concat($cashPayments)->concat($expenses)
-            ->sortByDesc(fn ($row) => $row['timestamp'] ?? $row['date'])
-            ->values()
-            ->take($take);
     }
 
     /** GET /api/dashboard/retailer - Retailer's own earnings chart */
@@ -115,9 +50,77 @@ class DashboardController extends Controller
                 ->selectRaw("DATE_FORMAT(date, '%Y-%m') as period, SUM(final_total) as earnings")
                 ->groupBy('period')->orderBy('period')->get();
 
+        // What the retailer still owes the company across all their bills
+        // (Bill::grand_total is reduced as settlements come in, so summing
+        // it gives the live outstanding balance rather than a snapshot).
+        $currentBalance = (float) Bill::where('retailer_id', $retailer->id)->sum('grand_total');
+
         return response()->json([
             'period' => $period,
             'earnings_chart' => $chart,
+            'current_balance' => round($currentBalance, 2),
+            'recent_transactions' => $this->recentTransactions($retailer),
         ]);
+    }
+
+    /**
+     * Merge the retailer's last few bills, stock movements, and cash
+     * payments into a single "Recent Transactions" feed for the dashboard,
+     * newest first.
+     *
+     * Deliberately returns generic fields (kind/ref_id/status/items_count)
+     * rather than pre-rendered English strings like "Invoice #3" or
+     * "Balance due" - the Flutter app builds the localized title/subtitle
+     * itself so the feed reads correctly in every supported language.
+     */
+    private function recentTransactions(Retailer $retailer, int $limit = 8): array
+    {
+        $items = collect();
+
+        foreach (Bill::where('retailer_id', $retailer->id)->latest('date')->take($limit)->get() as $bill) {
+            $items->push([
+                'kind' => 'bill',
+                'ref_id' => $bill->id,
+                'status' => ((float) $bill->grand_total > 0.005) ? 'due' : 'settled',
+                'items_count' => null,
+                'amount' => (float) $bill->final_total,
+                'date' => optional($bill->date)->toDateString(),
+            ]);
+        }
+
+        foreach (GiveStock::where('retailer_id', $retailer->id)->withCount('items')->latest('date')->take($limit)->get() as $gs) {
+            $items->push([
+                'kind' => 'stock_in',
+                'ref_id' => $gs->id,
+                'status' => null,
+                'items_count' => $gs->items_count,
+                'amount' => null,
+                'date' => optional($gs->date)->toDateString(),
+            ]);
+        }
+
+        foreach (ReturnStock::where('retailer_id', $retailer->id)->withCount('items')->latest('date')->take($limit)->get() as $rs) {
+            $items->push([
+                'kind' => 'stock_out',
+                'ref_id' => $rs->id,
+                'status' => null,
+                'items_count' => $rs->items_count,
+                'amount' => null,
+                'date' => optional($rs->date)->toDateString(),
+            ]);
+        }
+
+        foreach (CashPayment::where('retailer_id', $retailer->id)->latest('date')->take($limit)->get() as $cp) {
+            $items->push([
+                'kind' => 'payment',
+                'ref_id' => $cp->id,
+                'status' => null,
+                'items_count' => null,
+                'amount' => (float) $cp->amount,
+                'date' => optional($cp->date)->toDateString(),
+            ]);
+        }
+
+        return $items->sortByDesc('date')->take($limit)->values()->all();
     }
 }
