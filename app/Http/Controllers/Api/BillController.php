@@ -7,11 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\Retailer;
 use App\Services\BillCalculationService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class BillController extends Controller
 {
-    public function __construct(protected BillCalculationService $billService) {}
+    public function __construct(
+        protected BillCalculationService $billService,
+        protected NotificationService $notifications,
+    ) {}
 
     /** GET /api/bills?retailer_id=&date_from=&date_to= */
     public function index(Request $request)
@@ -72,6 +76,8 @@ class BillController extends Controller
         } catch (BillGenerationException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+
+        $this->notifications->newBillGenerated($bill);
 
         return response()->json($bill, 201);
     }

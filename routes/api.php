@@ -6,8 +6,11 @@ use App\Http\Controllers\Api\CashPaymentController;
 use App\Http\Controllers\Api\CashReportController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\GiveStockController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PasswordResetRequestController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RawMaterialController;
 use App\Http\Controllers\Api\ReportController;
@@ -22,6 +25,7 @@ use Illuminate\Support\Facades\Route;
 // Public
 // ---------------------------------------------------------------------
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 
 // ---------------------------------------------------------------------
 // Authenticated (any role)
@@ -32,6 +36,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::put('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/company', [CompanyController::class, 'show']);
+
+    // Push notification device registration - any role can register a
+    // device, though only Admins are ever sent a notification (see
+    // NotificationService).
+    Route::post('/fcm-token', [DeviceTokenController::class, 'store']);
+    Route::delete('/fcm-token', [DeviceTokenController::class, 'destroy']);
 
     // -------------------------------------------------------------
     // Admin & Manager screens (section 3) - both roles share access,
@@ -86,6 +96,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/raw-materials/{rawMaterial}', [RawMaterialController::class, 'destroy']);
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
         Route::delete('/retailer-loans/{retailerLoan}', [RetailerLoanController::class, 'destroy']);
+
+        // Forgot-password requests raised by non-admin users, resolved by Admin.
+        Route::get('/password-reset-requests', [PasswordResetRequestController::class, 'index']);
+        Route::post('/password-reset-requests/{passwordResetRequest}/resolve', [PasswordResetRequestController::class, 'resolve']);
+
+        // In-app notification feed (Admin only).
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/test', [NotificationController::class, 'test']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     });
 
     // -------------------------------------------------------------

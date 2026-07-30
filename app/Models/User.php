@@ -35,6 +35,21 @@ class User extends Authenticatable
         return $this->belongsTo(Company::class);
     }
 
+    public function deviceTokens()
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
+    public function passwordResetRequests()
+    {
+        return $this->hasMany(PasswordResetRequest::class);
+    }
+
+    public function notificationRecipients()
+    {
+        return $this->hasMany(AppNotificationRecipient::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->type === 'admin';
