@@ -4,3 +4,15 @@ deployment:
     - export DEPLOYPATH=/home/klupjyap/public_html/jeyatoday/
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp -R * $DEPLOYPATH
+    - /bin/cp -f .htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
+    - /bin/cp -n .env $DEPLOYPATH/.env 2>/dev/null || true
+    - /bin/rm -f $DEPLOYPATH/bootstrap/cache/config.php
+    - /bin/rm -f $DEPLOYPATH/bootstrap/cache/routes-v7.php
+    - /bin/rm -f $DEPLOYPATH/bootstrap/cache/services.php
+    - /bin/rm -f $DEPLOYPATH/bootstrap/cache/packages.php
+    - /bin/mkdir -p $DEPLOYPATH/storage/framework/cache/data
+    - /bin/mkdir -p $DEPLOYPATH/storage/framework/sessions
+    - /bin/mkdir -p $DEPLOYPATH/storage/framework/views
+    - /bin/mkdir -p $DEPLOYPATH/storage/logs
+    - /bin/mkdir -p $DEPLOYPATH/bootstrap/cache
+    - /bin/chmod -R 775 $DEPLOYPATH/storage $DEPLOYPATH/bootstrap/cache
